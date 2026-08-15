@@ -1,0 +1,86 @@
+startup --experimental_remote_repo_contents_cache
+
+# Tell Bazel to not detect the CC toolchain automatically from the host machine to improve hermeticity.
+common --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+
+common --java_runtime_version=remotejdk_21
+common --tool_java_runtime_version=remotejdk_21
+common --incompatible_modify_execution_info_additive
+common --noremote_upload_local_results
+
+# Downloading from the registry less flaky
+common --experimental_repository_downloader_retries=10
+common --http_connector_attempts=10
+common --http_connector_retry_max_timeout=60s
+common --module_mirrors=https://bcr.cloudflaremirrors.com
+
+common --nobuild_runfile_links
+
+##############################
+###  rules_img Configs     ###
+##############################
+common --@rules_img//img/settings:compress=zstd
+common --@rules_img//img/settings:compression_jobs=auto
+common --@rules_img//img/settings:compression_level=auto
+common --@rules_img//img/settings:estargz=disabled
+common --@rules_img//img/settings:create_parent_directories=disabled
+common --@rules_img//img/settings:layer_tree_artifact_handling=full
+common --@rules_img//img/settings:runfiles_sharing_mode=auto
+common --@rules_img//img/settings:stamp=disabled
+common --@rules_img//img/settings:load_daemon=docker
+common --@rules_img//img/settings:load_strategy=eager
+
+##############################
+###  BuildBuddy RBE        ###
+##############################
+common:rbe --experimental_remote_downloader=grpcs://justinswe.buildbuddy.io
+common:rbe --modify_execution_info=CopyFile=-no-remote
+common:rbe --modify_execution_info=CopyFile=-no-cache
+common:rbe --modify_execution_info=CopyDirectory=-no-remote
+common:rbe --modify_execution_info=CopyDirectory=-no-cache
+common:rbe --strategy=remote
+common:rbe --repo_env=BAZEL_DO_NOT_DETECT_CPP_TOOLCHAIN=1
+common:rbe --repo_env=BAZEL_NO_APPLE_CPP_TOOLCHAIN=1
+common:rbe --remote_cache_compression
+
+build:rbe --bes_results_url=https://justinswe.buildbuddy.io/invocation/
+build:rbe --bes_backend=grpcs://justinswe.buildbuddy.io
+build:rbe --remote_cache=grpcs://justinswe.buildbuddy.io
+build:rbe --remote_executor=grpcs://justinswe.buildbuddy.io
+build:rbe --remote_timeout=40m
+build:rbe --remote_retries=15
+build:rbe --remote_download_outputs=minimal
+build:rbe --remote_build_event_upload=minimal
+build:rbe --experimental_remote_cache_chunking
+build:rbe --noslim_profile
+build:rbe --nolegacy_important_outputs
+build:rbe --experimental_profile_include_target_label
+build:rbe --experimental_profile_include_primary_output
+build:rbe --experimental_repository_cache_hardlinks
+build:rbe --host_platform=@toolchains_buildbuddy//platforms:linux_x86_64
+build:rbe --platforms=@toolchains_buildbuddy//platforms:linux_x86_64
+build:rbe --extra_execution_platforms=@toolchains_buildbuddy//platforms:linux_x86_64
+build:rbe --define=EXECUTOR=remote
+build:rbe --jobs=200
+build:rbe --build_metadata=REPO_URL=https://github.com/justinswe/ynab-mcp.git
+
+##############################
+###  Continuous Integration ##
+##############################
+# Keep resolved rc logging disabled because user rc files may contain credentials.
+common:ci --lockfile_mode=error
+common:ci --disk_cache=
+common:ci --color=yes
+common:ci --curses=yes
+common:ci --grpc_keepalive_time=30s
+common:ci --remote_download_outputs=minimal
+common:ci --remote_local_fallback
+common:ci --remote_upload_local_results
+common:ci --show_progress_rate_limit=60
+common:ci --show_timestamps
+common:ci --terminal_columns=143
+build:ci --remote_execution_priority=2
+build:ci --build_metadata=ROLE=CI
+test:ci --test_summary=terse
+
+try-import %workspace%/.bazelrc.user

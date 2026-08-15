@@ -1,0 +1,5 @@
+bazel_dep(name = "platforms", version = "1.1.0")
+bazel_dep(name = "rules_img", version = "0.3.15")
+
+images = use_extension("//third_party/images:images.bzl", "images")
+use_repo(images, "distroless_base_debian13_nonroot")

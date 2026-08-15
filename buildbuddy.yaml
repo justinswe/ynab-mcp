@@ -1,0 +1,146 @@
+actions:
+  # BuildBuddy injects RBE authentication; workflow steps must not inspect user rc files.
+  - name: presubmit
+    container_image: "ubuntu-24.04"
+    resource_requests:
+      cpu: 2000m
+      memory: 6GB
+    triggers:
+      pull_request:
+        branches:
+          - main
+        merge_with_base: true
+
+    steps:
+      - run: |
+          set -euo pipefail
+
+          extract_module_version() {
+            sed -nE '
+              /^[[:space:]]*module[[:space:]]*\([[:space:]]*$/,/^[[:space:]]*\)[[:space:]]*$/ {
+                s/^[[:space:]]*version[[:space:]]*=[[:space:]]*"([^"]+)"[[:space:]]*,[[:space:]]*$/\1/p
+              }
+            '
+          }
+
+          version_is_newer() {
+            local candidate="$1"
+            local current="$2"
+            local -a candidate_parts current_parts
+            local index
+
+            IFS=. read -r -a candidate_parts <<< "${candidate}"
+            IFS=. read -r -a current_parts <<< "${current}"
+
+            for index in 0 1 2; do
+              if (( 10#${candidate_parts[index]} > 10#${current_parts[index]} )); then
+                return 0
+              fi
+              if (( 10#${candidate_parts[index]} < 10#${current_parts[index]} )); then
+                return 1
+              fi
+            done
+
+            return 1
+          }
+
+          base_ref="refs/remotes/origin/main"
+          version_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+
+          if [[ ! -f MODULE.bazel ]]; then
+            echo "MODULE.bazel is missing from the pull request checkout." >&2
+            exit 1
+          fi
+          if ! git rev-parse --verify --quiet "${base_ref}" >/dev/null; then
+            echo "Unable to find ${base_ref} for the module version comparison." >&2
+            exit 1
+          fi
+
+          candidate_version="$(extract_module_version < MODULE.bazel)"
+          if ! base_module="$(git show "${base_ref}:MODULE.bazel")"; then
+            echo "Unable to read MODULE.bazel from ${base_ref}." >&2
+            exit 1
+          fi
+          current_version="$(extract_module_version <<< "${base_module}")"
+
+          if [[ ! "${candidate_version}" =~ ${version_pattern} ]]; then
+            printf 'MODULE.bazel must declare a canonical MAJOR.MINOR.PATCH version; found %q.\n' \
+              "${candidate_version:-<missing>}" >&2
+            exit 1
+          fi
+          if [[ ! "${current_version}" =~ ${version_pattern} ]]; then
+            printf '%s MODULE.bazel must declare a canonical MAJOR.MINOR.PATCH version; found %q.\n' \
+              "${base_ref}" "${current_version:-<missing>}" >&2
+            exit 1
+          fi
+          if ! version_is_newer "${candidate_version}" "${current_version}"; then
+            printf 'MODULE.bazel version %s must be newer than the current main version %s.\n' \
+              "${candidate_version}" "${current_version}" >&2
+            exit 1
+          fi
+
+          printf 'MODULE.bazel version %s is newer than the current main version %s.\n' \
+            "${candidate_version}" "${current_version}"
+
+      - run: |
+          bazel \
+            test \
+            --config=rbe \
+            --config=ci \
+            --test_output=all \
+            //...
+
+  - name: publish
+    container_image: "ubuntu-24.04"
+    resource_requests:
+      cpu: 2000m
+      memory: 6GB
+    triggers:
+      push:
+        branches:
+          - main
+
+    steps:
+      - run: |
+          bazel \
+            test \
+            --config=rbe \
+            --config=ci \
+            --test_output=all \
+            //...
+
+      - run: |
+          set -euo pipefail
+          set +x
+
+          : "${DOCKERHUB_USERNAME:?DOCKERHUB_USERNAME is not configured}"
+          : "${DOCKERHUB_TOKEN:?DOCKERHUB_TOKEN is not configured}"
+
+          docker_config_dir="$(mktemp -d)"
+          chmod 700 "${docker_config_dir}"
+          trap 'rm -rf -- "${docker_config_dir}"' EXIT
+          export DOCKER_CONFIG="${docker_config_dir}"
+
+          printf '%s' "${DOCKERHUB_TOKEN}" | docker login \
+            --username "${DOCKERHUB_USERNAME}" \
+            --password-stdin \
+            docker.io \
+            >/dev/null
+
+          bazel run \
+            --config=rbe \
+            --config=ci \
+            --stamp \
+            --remote_download_outputs=all \
+            --@rules_img//img/settings:push_strategy=eager \
+            --@rules_img//img/settings:docker_config_path="${DOCKER_CONFIG}/config.json" \
+            //:image_push
+
+          bazel run \
+            --config=rbe \
+            --config=ci \
+            --stamp \
+            --remote_download_outputs=all \
+            --@rules_img//img/settings:push_strategy=eager \
+            --@rules_img//img/settings:docker_config_path="${DOCKER_CONFIG}/config.json" \
+            //:image_push_latest

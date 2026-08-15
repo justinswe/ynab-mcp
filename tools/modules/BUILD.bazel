@@ -1,0 +1,5 @@
+exports_files([
+    "go.MODULE.bazel",
+    "images.MODULE.bazel",
+    "toolchain.MODULE.bazel",
+])

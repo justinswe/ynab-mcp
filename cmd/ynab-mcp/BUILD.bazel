@@ -1,0 +1,45 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "ynab-mcp_lib",
+    srcs = [
+        "config.go",
+        "main.go",
+        "run.go",
+    ],
+    importpath = "github.com/justinswe/ynab-mcp/cmd/ynab-mcp",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//:ynab-mcp",
+        "@com_github_justinswe_std//app",
+        "@com_github_justinswe_std//errors",
+        "@com_github_modelcontextprotocol_go_sdk//mcp",
+        "@com_github_spf13_cobra//:cobra",
+        "@org_uber_go_zap//:zap",
+    ],
+)
+
+MODULE_VERSION = module_version()
+
+go_binary(
+    name = "ynab-mcp",
+    embed = [":ynab-mcp_lib"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+    x_defs = {
+        "github.com/justinswe/ynab-mcp/cmd/ynab-mcp.version": MODULE_VERSION,
+    },
+)
+
+go_test(
+    name = "ynab-mcp_test",
+    size = "small",
+    srcs = ["serve_test.go"],
+    embed = [":ynab-mcp_lib"],
+    shard_count = 7,
+    deps = [
+        "@com_github_modelcontextprotocol_go_sdk//mcp",
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

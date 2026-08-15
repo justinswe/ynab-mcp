@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "ynab",
+    srcs = ["ynab.go"],
+    importpath = "github.com/justinswe/ynab-mcp/internal/ynab",
+    visibility = ["//:__subpackages__"],
+    deps = ["@com_github_justinswe_std//errors"],
+)
+
+go_test(
+    name = "ynab_test",
+    size = "small",
+    srcs = ["ynab_test.go"],
+    embed = [":ynab"],
+    shard_count = 8,
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
+)

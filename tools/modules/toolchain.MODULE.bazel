@@ -1,0 +1,11 @@
+# Hermetic C/C++ toolchains used by transitive build actions.
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
+
+buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU24_04_IMAGE")
+use_repo(buildbuddy, "buildbuddy_toolchain")
+
+register_toolchains(
+    "@buildbuddy_toolchain//:ubuntu_cc_toolchain",
+    "@buildbuddy_toolchain//:ubuntu_cc_toolchain_arm64",
+)

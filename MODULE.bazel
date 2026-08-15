@@ -1,0 +1,8 @@
+module(
+    name = "ynab-mcp",
+    version = "0.1.0",
+)
+
+include("//tools/modules:go.MODULE.bazel")
+include("//tools/modules:images.MODULE.bazel")
+include("//tools/modules:toolchain.MODULE.bazel")
