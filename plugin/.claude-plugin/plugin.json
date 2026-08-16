@@ -1,0 +1,13 @@
+{
+  "name": "ynab",
+  "description": "YNAB budgeting tools for Claude: balances, transactions, categories, and monthly reports.",
+  "version": "0.2.0",
+  "author": {
+    "name": "justinswe",
+    "url": "https://github.com/justinswe"
+  },
+  "homepage": "https://github.com/justinswe/ynab-mcp",
+  "repository": "https://github.com/justinswe/ynab-mcp",
+  "license": "MIT",
+  "keywords": ["ynab", "budget", "finance", "mcp"]
+}

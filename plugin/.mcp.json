@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ynab": {
+      "type": "http",
+      "url": "${YNAB_MCP_URL:-https://ynab.ju2tin.dev/mcp}",
+      "headers": {
+        "Authorization": "Bearer ${YNAB_ACCESS_TOKEN}"
+      }
+    }
+  }
+}
