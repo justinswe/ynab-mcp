@@ -1,0 +1,15 @@
+{
+  "name": "ynab-mcp",
+  "description": "YNAB budgeting tools for Claude, backed by the open-source ynab-mcp server.",
+  "owner": {
+    "name": "justinswe",
+    "url": "https://github.com/justinswe"
+  },
+  "plugins": [
+    {
+      "name": "ynab",
+      "description": "YNAB budgeting tools for Claude: balances, transactions, categories, and monthly reports.",
+      "source": "./plugin"
+    }
+  ]
+}
